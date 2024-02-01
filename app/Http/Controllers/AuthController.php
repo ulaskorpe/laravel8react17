@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 class AuthController extends Controller
 {
     public function register(Request $request){
@@ -23,13 +24,29 @@ class AuthController extends Controller
                 'name'=>$request->name,
                 'email'=>$request->email,
                 'password'=>Hash::make($request->password),//md5($request->password)
-
+                'remember_token' => Str::random(10),
             ]);
             $user->save();
 
-           // $this->tokenReturn($request);
+           return $this->tokenReturn($request);
             //$credentials = [ 'email'=>$request->email,'password'=>$request->password];
-            $credentials = request(['email','password']);
+          
+
+    }
+
+    public function login(Request $request){
+
+   $request->validate([
+                'remember_me'=>'boolean',
+                'email'=>'required|string|email',
+                'password'=>'required|string'
+            ]);
+            return $this->tokenReturn($request);
+             
+    }
+
+    private function tokenReturn( Request $request){
+        $credentials = request(['email','password']);
              
             if(!Auth::attempt($credentials)){
                 return response()->json(['invalid credentials'],401);
@@ -52,39 +69,6 @@ class AuthController extends Controller
                 'token_type'=>'Bearer',
                 'expires_at'=>Carbon::parse($tokenResult->token->expires_at)->toDateTimeString()
             ],201);
-
-    }
-
-    public function login(Request $request){
-
-   $request->validate([
-                'remember_me'=>'boolean',
-                'email'=>'required|string|email',
-                'password'=>'required|string|confirmed'
-            ]);
-           $this->tokenReturn($request);
-             
-    }
-
-    private function tokenReturn( Request $request){
-        $credentials = request(['email','password']);
-        if(Auth::attempt($credentials)){
-            return response()->json(['invalid credentials'],401);
-        }
-        $user = $request->user();
-        $tokenResult = $user->createToken('Personal Access Token');
-        $token = $tokenResult->token;
-        if($request->remeber_me){
-            $token->expires_at = Carbon::now()->addWeeks(1);
-        }
-        $token->save();
-        return response()->json ([
-            'success'=>true,
-            'user'=>$user,
-            'access_token'=>$tokenResult->access_token,
-            'token_type'=>'Bearer',
-            'expires_at'=>Carbon::parse($tokenResult->token->expires_at)->toDateTimeString()
-        ],201);
     }
 
     public function logout(Request $request){

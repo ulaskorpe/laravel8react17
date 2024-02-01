@@ -1,27 +1,106 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { Formik } from "formik";
 import  * as Yup from 'yup' ;
 import Swal from "sweetalert2";
 import axios from "axios";
-const Register=()=>{
+import { inject, observer } from "mobx-react";
+ import {useNavigate} from 'react-router-dom';
+const Register=(props)=>{
+ 
+  const [errors,setErrors]= useState([]);
+  const [error,setError]= useState([]);
+  const navigate = useNavigate();
     const handleSubmit =(values)=>{
-
+      var icon = "success";
         axios.post(`/api/auth/register`,{...values})
         .then((res)=>{
-            console.log(res);
-            Swal.fire({
-                title: '',
-                text: res.statusText,
-                icon: 'success',
-              });
+          let icon = "success";
+         
+            let  text =res.statusText + " with login";
+             console.log(res.data);
+          if(res.data.success){
+              const userData ={
+                id:res.data.id,
+                name:res.data.name,
+                email:res.data.email,
+                access_token:res.data.access_token,
+              }
+              //  setAppState({ isLoggedIn:true,user : userData})
+              const appState = {
+                isLoggedIn:true,
+                user : userData
+              }
+          
+              //props.AuthStore.saveToken(JSON.stringify(appState));
+              props.AuthStore.saveToken(appState);
+              // props.history.push('/');
+              navigate('/');
+  //location.reload();// reload page
+             //console.log( props.AuthStore.appState.user);
+          // }else{
+          //   var text = res.statusText + " without login";
+          }
+
+          Swal.fire({
+            title: '',
+            text:text ,
+            icon: "success",
+          });
+
+          
         })
         .catch(error=>{
-            console.log(error);
-        })
+          let icon = "warning";
+            //console.log(error);
+            if(error.response){
+              let err =  error.response.data;
+   
+                  setErrors(err.errors);
+  
+     
+            }else if(error.request){
+             let err = error.request ;
+              setError(err);
+             
+              Swal.fire({
+                title: '',
+                text:err ,
+                icon: "warning",
+              });
+            }else{
+              let err =  error.message ;
+              setError(err);
+              
+              Swal.fire({
+                title: '',
+                text:err ,
+                icon: "warning",
+              });
+            }
+           
 
-        
+           
+            
+         
+        })
+   
     }
+
+    let arr = [];
+    
+    Object.values(errors).forEach(value=>{
+      arr.push(value);
+       
+    })
+    
+    // if(arr.length > 0){
+    //    Swal.fire({
+    //           title: '',
+    //           text:text  ,
+    //           icon: icon,
+    //         });
+    // }
     return(
 
 <div className="d-flex align-items-center justify-content-center mt-5 login-register-container"  > 
@@ -30,6 +109,8 @@ const Register=()=>{
    <form className="form">
    
    <h1 className="h3 mb-3 fw-normal">Register Form</h1>
+   {arr.length !=0 && arr.map((item)=>(<p className="error-p">{item}</p>))}
+   {error != '' && (<p className="error-p">{error}</p>) }
    <Formik initialValues={{
     name:'',email:'',password:'',password_confirmation:''
    }}
@@ -58,7 +139,7 @@ const Register=()=>{
     <div>
    <div className="mb-3 form-group">
    <label htmlFor="name" className="form-label">Name Surname</label>
-     <input type="text" name="name" className="form-control" id="name" placeholder="freddy kruger"
+     <input type="text" name="name" className="form-control" id="name" placeholder="name surname"
       value={values.name}
       onBlur={handleBlur}
       onChange={handleChange('name')}
@@ -113,4 +194,5 @@ const Register=()=>{
     )
 }
 
-export default Register; 
+export default inject("AuthStore")(observer(  Register)); 
+ 
